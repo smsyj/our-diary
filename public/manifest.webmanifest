@@ -2,7 +2,8 @@
   "name": "Our Diary Calendar",
   "short_name": "Diary Cal",
   "description": "우리 둘만의 캘린더 위젯",
-  "start_url": "/our-diary/?widget=calendar",
+  "id": "/our-diary/?widget=calendar",
+  "start_url": "/our-diary/?widget=calendar#widget=calendar",
   "scope": "/our-diary/",
   "display": "standalone",
   "orientation": "portrait",
@@ -19,7 +20,7 @@
   "shortcuts": [
     {
       "name": "캘린더만 보기",
-      "url": "/our-diary/?widget=calendar"
+      "url": "/our-diary/?widget=calendar#widget=calendar"
     }
   ]
 }

@@ -36,8 +36,13 @@ function useIsDesktop() {
 
 function isWidgetMode() {
   if (typeof window === 'undefined') return false
+  // 1. ?widget=calendar (쿼리 스트링)
   const params = new URLSearchParams(window.location.search)
-  return params.get('widget') === 'calendar'
+  if (params.get('widget') === 'calendar') return true
+  // 2. #widget=calendar 또는 #/widget/calendar (해시)
+  const hash = window.location.hash || ''
+  if (hash.includes('widget=calendar') || hash.includes('widget/calendar')) return true
+  return false
 }
 
 export default function App() {
