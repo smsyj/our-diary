@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { daysSince, nextYearAnniversary } from '../utils/dateUtils'
 import AccountSetupModal from '../components/AccountSetupModal'
+import { api } from '../utils/api'
 
 export default function SettingsPage({ data, navigate, onLogout, isDesktop }) {
   const { settings, setSettings, accounts, auth } = data
@@ -71,27 +72,55 @@ export default function SettingsPage({ data, navigate, onLogout, isDesktop }) {
   }
 
   // 어드민 전용: 모든 데이터 초기화
-  function resetAllData() {
-    if (!confirm('⚠️ 정말 모든 데이터를 초기화할까요?\n\n- 일기, 사진, 일정, 위시리스트 모두 삭제\n- 사용자 계정 정보 삭제\n- 처음 사용 상태로 돌아감\n\n이 작업은 되돌릴 수 없어요!')) return
+  async function resetAllData() {
+    if (!confirm('⚠️ 정말 모든 데이터를 초기화할까요?\n\n- 일기, 사진, 일정, 위시리스트 모두 삭제 (서버에서)\n- 사용자 계정 정보 삭제\n- 처음 사용 상태로 돌아감\n\n이 작업은 되돌릴 수 없어요!')) return
     if (!confirm('진짜로 진행할까요? 마지막 확인입니다.')) return
 
-    // localStorage의 모든 diary_ 항목 삭제
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('diary_'))
-    keys.forEach(k => localStorage.removeItem(k))
+    try {
+      // 모든 데이터 서버에서 삭제
+      const [entries, events, wishlist, annivs, accounts] = await Promise.all([
+        api.getEntries(),
+        api.getEvents(),
+        api.getWishlist(),
+        api.getAnniversaries(),
+        api.getAccounts(),
+      ])
 
-    alert('초기화 완료! 페이지를 새로고침합니다.')
-    window.location.reload()
+      // 일기 삭제
+      for (const e of entries) {
+        await api.deleteEntry(e.id)
+      }
+      // 일정 삭제
+      for (const e of events) {
+        await api.deleteEvent(e.id)
+      }
+      // 위시리스트 삭제
+      for (const w of wishlist) {
+        await api.deleteWish(w.id)
+      }
+      // 기념일 삭제
+      for (const a of annivs) {
+        await api.deleteAnniversary(a.id)
+      }
+      // 계정 전체 삭제
+      await api.deleteAccounts()
+      // 로그인 상태도 제거
+      localStorage.removeItem('diary_auth')
+
+      alert('초기화 완료! 페이지를 새로고침합니다.')
+      window.location.reload()
+    } catch (err) {
+      alert('초기화 실패: ' + err.message)
+    }
   }
 
   // 어드민 전용: 샘플 데이터 추가
-  function loadSampleData() {
+  async function loadSampleData() {
     if (!confirm('샘플 일기/일정/위시 데이터를 추가할까요?\n(기존 데이터는 유지됨)')) return
 
     const today = new Date()
     const sampleEntries = [
       {
-        id: Date.now() + 1,
-        number: data.entries.length + 1,
         author: 'her',
         title: '오늘의 카페 데이트 ☕',
         content: '오늘 날씨도 좋고 너랑 같이 카페 가서 너무 행복했어. 새로 생긴 라떼가 진짜 맛있더라!',
@@ -102,11 +131,8 @@ export default function SettingsPage({ data, navigate, onLogout, isDesktop }) {
         tags: ['데이트', '카페', '행복'],
         bMode: false,
         createdAt: new Date(today.getTime() - 86400000).toISOString().slice(0, 10),
-        updatedAt: new Date().toISOString().slice(0, 10),
       },
       {
-        id: Date.now() + 2,
-        number: data.entries.length + 2,
         author: 'him',
         title: '한강 자전거',
         content: '오랜만에 자전거 빌려서 한강 따라 달렸다. 노을이 너무 예뻤음 ㅎㅎ',
@@ -117,26 +143,36 @@ export default function SettingsPage({ data, navigate, onLogout, isDesktop }) {
         tags: ['데이트', '한강', '운동'],
         bMode: false,
         createdAt: new Date(today.getTime() - 172800000).toISOString().slice(0, 10),
-        updatedAt: new Date().toISOString().slice(0, 10),
       },
     ]
 
-    data.setEntries([...data.entries, ...sampleEntries])
-    alert('샘플 데이터 추가 완료!')
+    try {
+      for (const e of sampleEntries) {
+        await data.addEntry(e)
+      }
+      alert('샘플 데이터 추가 완료!')
+    } catch (err) {
+      alert('샘플 추가 실패: ' + err.message)
+    }
   }
 
-  function addAnniversary() {
+  async function addAnniversary() {
     if (!newAnniv.title.trim() || !newAnniv.date) return
-    data.setCustomAnniversaries([
-      ...data.customAnniversaries,
-      { id: Date.now(), title: newAnniv.title.trim(), date: newAnniv.date }
-    ])
-    setNewAnniv({ title: '', date: '' })
-    setShowAddAnniv(false)
+    try {
+      await data.addAnniversary({ title: newAnniv.title.trim(), date: newAnniv.date })
+      setNewAnniv({ title: '', date: '' })
+      setShowAddAnniv(false)
+    } catch (err) {
+      console.error('기념일 추가 실패:', err)
+    }
   }
 
-  function removeAnniversary(id) {
-    data.setCustomAnniversaries(data.customAnniversaries.filter(a => a.id !== id))
+  async function removeAnniversary(id) {
+    try {
+      await data.deleteAnniversary(id)
+    } catch (err) {
+      console.error('기념일 삭제 실패:', err)
+    }
   }
 
   function toggleNotif(key) {

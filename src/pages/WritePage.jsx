@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { daysSince, formatDate } from '../utils/dateUtils'
-import { processPhoto } from '../utils/photoUtils'
+import { processPhoto, deletePhotoFromR2 } from '../utils/photoUtils'
 import { EVENT_CATEGORIES } from '../utils/eventUtils'
 import { generateBModeImage, downloadDataUrl } from '../utils/bModeUtils'
 
@@ -21,7 +21,7 @@ const WEATHER_OPTIONS = [
 ]
 
 export default function WritePage({ data, navigate, editingEntry, isDesktop }) {
-  const { settings, entries, setEntries, events, setEvents } = data
+  const { settings, entries, addEntry, updateEntry, deleteEntry, events } = data
   const fileInputRef = useRef(null)
   const bModePhotoRef = useRef(null)
   const isEditing = !!editingEntry
@@ -111,6 +111,7 @@ export default function WritePage({ data, navigate, editingEntry, isDesktop }) {
       setPhotos([...photos, ...newPhotos])
     } catch (err) {
       console.error('사진 업로드 실패:', err)
+      alert('사진 업로드 실패: ' + err.message)
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -118,6 +119,11 @@ export default function WritePage({ data, navigate, editingEntry, isDesktop }) {
   }
 
   function removePhoto(id) {
+    // 삭제할 사진의 key 찾기 (R2에서도 삭제)
+    const photo = photos.find(p => p.id === id)
+    if (photo && photo.key) {
+      deletePhotoFromR2(photo.key) // 백그라운드 삭제 (await 안 함)
+    }
     setPhotos(photos.filter(p => p.id !== id))
   }
 
@@ -133,7 +139,7 @@ export default function WritePage({ data, navigate, editingEntry, isDesktop }) {
     setTags(tags.filter(t => t !== tag))
   }
 
-  function handleSave() {
+  async function handleSave() {
     // B-MODE면 사진+텍스트만 있어도 OK
     if (bMode) {
       if (!bModePhoto) {
@@ -164,35 +170,48 @@ export default function WritePage({ data, navigate, editingEntry, isDesktop }) {
       bMode,
       bModePhoto: bMode ? bModePhoto : null,
       bModeText: bMode ? bModeText.trim() : '',
-      bModeImage: bMode ? bModePreview : null, // 합성된 이미지
+      bModeImage: bMode ? bModePreview : null,
       createdAt: entryDate || formatDate(new Date(), 'iso'),
       updatedAt: formatDate(new Date(), 'iso'),
     }
-    if (isEditing) setEntries(entries.map(e => e.id === entry.id ? entry : e))
-    else setEntries([...entries, entry])
 
-    // 일정도 함께 추가
-    if (addEvent && eventData.title.trim()) {
-      const newEvt = {
-        id: Date.now() + 1,
-        title: eventData.title.trim(),
-        date: entry.createdAt,
-        endDate: eventData.endDate || entry.createdAt,
-        time: eventData.time,
-        location: location.trim(),
-        category: eventData.category,
+    try {
+      if (isEditing) {
+        await updateEntry(editingEntry.id, entry)
+      } else {
+        await addEntry(entry)
       }
-      setEvents([...events, newEvt])
-    }
 
-    navigate('dashboard')
+      // 일정도 함께 추가
+      if (addEvent && eventData.title.trim()) {
+        const newEvt = {
+          title: eventData.title.trim(),
+          date: entry.createdAt,
+          endDate: eventData.endDate || entry.createdAt,
+          time: eventData.time,
+          location: location.trim(),
+          category: eventData.category,
+        }
+        // addEvent는 useAppData의 메서드 (이름 충돌 주의)
+        await data.addEvent(newEvt)
+      }
+
+      navigate('dashboard')
+    } catch (err) {
+      // 에러는 useAppData에서 alert로 표시함
+      console.error('저장 실패:', err)
+    }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!isEditing) return
     if (confirm('이 일기를 삭제할까요?')) {
-      setEntries(entries.filter(e => e.id !== editingEntry.id))
-      navigate('dashboard')
+      try {
+        await deleteEntry(editingEntry.id)
+        navigate('dashboard')
+      } catch (err) {
+        console.error('삭제 실패:', err)
+      }
     }
   }
 

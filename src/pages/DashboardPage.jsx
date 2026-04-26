@@ -16,8 +16,15 @@ export default function DashboardPage({ data, navigate, isDesktop }) {
   async function handleCoverPhotoChange(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    const photo = await processPhoto(file)
-    setSettings({ ...settings, coverPhoto: photo.src })
+    try {
+      const photo = await processPhoto(file)
+      setSettings({ ...settings, coverPhoto: photo.src })
+    } catch (err) {
+      console.error('대표 사진 업로드 실패:', err)
+      alert('사진 업로드 실패: ' + err.message)
+    } finally {
+      e.target.value = ''
+    }
   }
 
   if (isDesktop) {

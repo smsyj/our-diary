@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAppData } from './hooks/useAppData'
+import { api } from './utils/api'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import WritePage from './pages/WritePage'
@@ -11,16 +12,8 @@ import SettingsPage from './pages/SettingsPage'
 import Sidebar from './components/Sidebar'
 import AccountSetupModal from './components/AccountSetupModal'
 
-const DEFAULT_ACCOUNTS = [
-  { id: 'eunjin', password: '0601', name: '장은진', role: 'her' },
-  { id: 'sangmyeong', password: '0601', name: '염상명', role: 'him' },
-]
-
-// 어드민 계정 (테스트 전용)
-// - 항상 로그인 가능 (커스텀 계정 만들어도 살아있음)
-// - 첫 로그인 모달 안 뜸
-// - 설정에서 데이터 초기화 가능
-const ADMIN_ACCOUNT = { id: 'admin', password: '1234', name: 'Admin', role: 'admin' }
+// 인증은 모두 Cloudflare Workers API에서 처리
+// (admin / eunjin / sangmyeong 계정 검증은 서버에서 함)
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(
@@ -59,40 +52,39 @@ export default function App() {
     return () => document.body.classList.remove('app-mode')
   }, [])
 
+  // 위젯 모드일 때 데이터 자동 로드 (로그인 상태 무관)
+  useEffect(() => {
+    if (widgetMode) {
+      data.reload()
+    }
+  }, [widgetMode])
+
   useEffect(() => {
     if (data.auth.isLoggedIn && page === 'login') {
       setPage('dashboard')
     }
   }, [data.auth.isLoggedIn])
 
-  function handleLogin(id, password) {
-    // 0. 어드민 계정 우선 검증 (항상 로그인 가능, 모달 안 뜸)
-    if (id === ADMIN_ACCOUNT.id && password === ADMIN_ACCOUNT.password) {
-      data.setAuth({ isLoggedIn: true, user: ADMIN_ACCOUNT, isFirstLogin: false, isAdmin: true })
-      setPage('dashboard')
-      return { success: true }
-    }
-
-    // 1. 사용자가 변경한 계정이 있으면 그걸로 검증
-    const customAccounts = data.accounts
-    if (customAccounts && customAccounts.length > 0) {
-      const account = customAccounts.find(a => a.id === id && a.password === password)
-      if (account) {
-        data.setAuth({ isLoggedIn: true, user: account, isFirstLogin: false, isAdmin: false })
+  async function handleLogin(id, password) {
+    try {
+      const result = await api.login(id, password)
+      if (result.success) {
+        data.setAuth({
+          isLoggedIn: true,
+          user: result.user,
+          isFirstLogin: result.isFirstLogin || false,
+          isAdmin: result.isAdmin || false,
+        })
         setPage('dashboard')
         return { success: true }
       }
-      return { success: false, message: '아이디 또는 비밀번호가 틀렸어요.' }
+      return { success: false, message: result.error || '로그인 실패' }
+    } catch (err) {
+      return {
+        success: false,
+        message: err.message || '서버 연결 실패. 인터넷을 확인해주세요.',
+      }
     }
-
-    // 2. 사용자 계정 없으면 기본 계정으로 검증 (= 첫 로그인)
-    const account = DEFAULT_ACCOUNTS.find(a => a.id === id && a.password === password)
-    if (account) {
-      data.setAuth({ isLoggedIn: true, user: account, isFirstLogin: true, isAdmin: false })
-      setPage('dashboard')
-      return { success: true }
-    }
-    return { success: false, message: '아이디 또는 비밀번호가 틀렸어요.' }
   }
 
   function handleLogout() {
@@ -111,6 +103,75 @@ export default function App() {
 
   if (!data.auth.isLoggedIn && !widgetMode) {
     return <LoginPage onLogin={handleLogin} />
+  }
+
+  // 데이터 로딩 중
+  if (data.loading && !widgetMode) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'var(--paper-bg, #f5ede0)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        zIndex: 9999,
+      }}>
+        <p className="serif italic" style={{ fontSize: '32px', margin: 0 }}>Our Diary</p>
+        <p className="meta" style={{ color: 'var(--text-muted)', margin: 0 }}>
+          데이터를 불러오는 중...
+        </p>
+        <div style={{
+          width: '40px', height: '40px',
+          border: '3px solid rgba(0,0,0,0.1)',
+          borderTopColor: 'var(--color-her)',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
+
+  // 에러 화면
+  if (data.error && !widgetMode && !data.loading) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'var(--paper-bg, #f5ede0)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        padding: '20px',
+        textAlign: 'center',
+      }}>
+        <p className="serif" style={{ fontSize: '20px', color: 'var(--color-her)', margin: 0 }}>
+          ⚠ 서버 연결 실패
+        </p>
+        <p className="meta" style={{ color: 'var(--text-muted)', margin: 0, maxWidth: '400px' }}>
+          {data.error}
+        </p>
+        <button
+          onClick={() => data.reload()}
+          style={{
+            padding: '10px 20px',
+            background: 'var(--color-her)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '12px',
+            letterSpacing: '2px',
+          }}
+        >다시 시도</button>
+      </div>
+    )
   }
 
   if (widgetMode) {

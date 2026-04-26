@@ -3,7 +3,10 @@ import { daysSince, getUpcomingAnniversaries, formatDate, dDay, getDDayLabel } f
 import { EVENT_CATEGORIES, getCategoryByKey, getEventsForDate, getEventPosition } from '../utils/eventUtils'
 
 export default function CalendarPage({ data, navigate, initialDate, isDesktop }) {
-  const { settings, entries, events, setEvents, customAnniversaries } = data
+  const { settings, entries, events, customAnniversaries } = data
+  const apiAddEvent = data.addEvent
+  const apiUpdateEvent = data.updateEvent
+  const apiDeleteEvent = data.deleteEvent
 
   // 커스텀 기념일을 현재 보고있는 연도에 투영하여 캘린더용 가상 이벤트로 변환 (매년 반복)
   function buildAnnivEvents(year) {
@@ -121,7 +124,7 @@ export default function CalendarPage({ data, navigate, initialDate, isDesktop })
     setShowAddEvent(true)
   }
 
-  function handleSaveEvent() {
+  async function handleSaveEvent() {
     if (!newEvent.title.trim()) return
     const dateStr = editingEvent ? newEvent.date : formatDate(selectedDate, 'iso')
     const eventData = {
@@ -132,19 +135,27 @@ export default function CalendarPage({ data, navigate, initialDate, isDesktop })
       location: newEvent.location.trim(),
       category: newEvent.category,
     }
-    if (editingEvent) {
-      setEvents(events.map(e => e.id === editingEvent ? { ...e, ...eventData } : e))
-    } else {
-      setEvents([...events, { id: Date.now(), ...eventData }])
+    try {
+      if (editingEvent) {
+        await apiUpdateEvent(editingEvent, eventData)
+      } else {
+        await apiAddEvent(eventData)
+      }
+      setNewEvent({ title: '', date: '', endDate: '', time: '', location: '', category: 'date' })
+      setShowAddEvent(false)
+      setEditingEvent(null)
+    } catch (err) {
+      console.error('일정 저장 실패:', err)
     }
-    setNewEvent({ title: '', date: '', endDate: '', time: '', location: '', category: 'date' })
-    setShowAddEvent(false)
-    setEditingEvent(null)
   }
 
-  function deleteEvent(id) {
+  async function deleteEvent(id) {
     if (confirm('이 일정을 삭제할까요?')) {
-      setEvents(events.filter(e => e.id !== id))
+      try {
+        await apiDeleteEvent(id)
+      } catch (err) {
+        console.error('일정 삭제 실패:', err)
+      }
     }
   }
 

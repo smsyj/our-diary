@@ -2,8 +2,12 @@ import { useState } from 'react'
 import { formatDate } from '../utils/dateUtils'
 
 export default function WishlistPage({ data, navigate, isDesktop }) {
-  const { wishlist, setWishlist, settings, auth } = data
-  const [filter, setFilter] = useState('all') // all, pending, completed
+  const { wishlist, settings, auth } = data
+  const apiAddWish = data.addWish
+  const apiUpdateWish = data.updateWish
+  const apiDeleteWish = data.deleteWish
+
+  const [filter, setFilter] = useState('all')
   const [showAdd, setShowAdd] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [editingId, setEditingId] = useState(null)
@@ -14,7 +18,6 @@ export default function WishlistPage({ data, navigate, isDesktop }) {
     if (filter === 'completed') return w.completed
     return true
   }).sort((a, b) => {
-    // 미완료 먼저, 그 다음 최신순
     if (a.completed !== b.completed) return a.completed ? 1 : -1
     return new Date(b.createdAt) - new Date(a.createdAt)
   })
@@ -26,33 +29,36 @@ export default function WishlistPage({ data, navigate, isDesktop }) {
   }
   const progress = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0
 
-  function toggleComplete(id) {
-    setWishlist(wishlist.map(w =>
-      w.id === id
-        ? {
-            ...w,
-            completed: !w.completed,
-            completedAt: !w.completed ? formatDate(new Date(), 'iso') : null,
-          }
-        : w
-    ))
+  async function toggleComplete(id) {
+    const wish = wishlist.find(w => w.id === id)
+    if (!wish) return
+    const updated = {
+      ...wish,
+      completed: !wish.completed,
+      completedAt: !wish.completed ? formatDate(new Date(), 'iso') : null,
+    }
+    try {
+      await apiUpdateWish(id, updated)
+    } catch (err) {
+      console.error('체크 실패:', err)
+    }
   }
 
-  function addWish() {
+  async function addWish() {
     if (!newTitle.trim()) return
     const author = auth.user?.role || 'her'
-    setWishlist([
-      ...wishlist,
-      {
-        id: Date.now(),
+    try {
+      await apiAddWish({
         title: newTitle.trim(),
         author,
         completed: false,
         createdAt: formatDate(new Date(), 'iso'),
-      }
-    ])
-    setNewTitle('')
-    setShowAdd(false)
+      })
+      setNewTitle('')
+      setShowAdd(false)
+    } catch (err) {
+      console.error('추가 실패:', err)
+    }
   }
 
   function startEdit(item) {
@@ -60,16 +66,26 @@ export default function WishlistPage({ data, navigate, isDesktop }) {
     setEditTitle(item.title)
   }
 
-  function saveEdit(id) {
+  async function saveEdit(id) {
     if (!editTitle.trim()) return
-    setWishlist(wishlist.map(w => w.id === id ? { ...w, title: editTitle.trim() } : w))
-    setEditingId(null)
-    setEditTitle('')
+    const wish = wishlist.find(w => w.id === id)
+    if (!wish) return
+    try {
+      await apiUpdateWish(id, { ...wish, title: editTitle.trim() })
+      setEditingId(null)
+      setEditTitle('')
+    } catch (err) {
+      console.error('수정 실패:', err)
+    }
   }
 
-  function deleteWish(id) {
+  async function deleteWish(id) {
     if (confirm('이 위시를 삭제할까요?')) {
-      setWishlist(wishlist.filter(w => w.id !== id))
+      try {
+        await apiDeleteWish(id)
+      } catch (err) {
+        console.error('삭제 실패:', err)
+      }
     }
   }
 

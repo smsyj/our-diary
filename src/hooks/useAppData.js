@@ -1,11 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { api } from '../utils/api'
 
-/**
- * localStorage와 동기화되는 state hook
- * 1단계에서는 브라우저에만 저장.
- * 2단계에서 Cloudflare API 호출로 교체할 예정.
- */
-export function useLocalStorage(key, initialValue) {
+const DEFAULT_SETTINGS = {
+  startDate: '2025-06-01',
+  her: { name: '장은진', birthday: '2000-03-15' },
+  him: { name: '염상명', birthday: '1999-08-20' },
+  coverPhoto: null,
+  notifications: {
+    hundredDays: true,
+    anniversary: true,
+    birthday: true,
+    daysBefore: 5,
+  },
+}
+
+// localStorage hook (auth 상태만 저장)
+function useLocalStorage(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
       const stored = localStorage.getItem(key)
@@ -17,7 +27,11 @@ export function useLocalStorage(key, initialValue) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(key, JSON.stringify(value))
+      if (value === null || value === undefined) {
+        localStorage.removeItem(key)
+      } else {
+        localStorage.setItem(key, JSON.stringify(value))
+      }
     } catch (err) {
       console.error('localStorage 저장 실패:', err)
     }
@@ -27,81 +41,306 @@ export function useLocalStorage(key, initialValue) {
 }
 
 /**
- * 앱 전체 데이터 hook
+ * 앱 전체 데이터 hook (API 연동)
+ *
+ * 데이터 흐름:
+ * - 로그인 후 모든 데이터 한번에 로드
+ * - add/update/delete 메서드로 명시적 CRUD
+ * - state는 메모리에만 (서버에서 가져옴)
+ * - auth만 localStorage 사용
+ *
+ * 호환성:
+ * - setEntries, setEvents 등 기존 setter도 노출 (Optimistic Update)
+ *   - 단순히 state만 바꾸고, 호출 측이 add/update/delete 호출하는 패턴 권장
  */
 export function useAppData() {
-  // 사용자 설정
-  const [settings, setSettings] = useLocalStorage('diary_settings', {
-    startDate: '2025-06-01',
-    her: { name: '장은진', birthday: '2000-03-15' },
-    him: { name: '염상명', birthday: '1999-08-20' },
-    coverPhoto: null,
-    notifications: {
-      hundredDays: true,
-      anniversary: true,
-      birthday: true,
-      daysBefore: 5,
-    },
-  })
-
-  // 일기 목록
-  const [entries, setEntries] = useLocalStorage('diary_entries', [
-    {
-      id: 1,
-      number: 87,
-      author: 'her',
-      title: '한강에서, 너와',
-      content: '오늘 너랑 한강에서 본 노을이 너무 예뻤어. 분홍빛에서 보랏빛으로 천천히 변하는 하늘을 보면서, 옆에 있는 너의 옆모습이 더 예뻐서 자꾸 눈길이 갔어.',
-      photos: [],
-      mood: 'love',
-      weather: 'sunny',
-      location: '한강 뚝섬유원지',
-      tags: ['데이트', '한강', '노을'],
-      createdAt: '2026-04-24',
-    },
-    {
-      id: 2,
-      number: 86,
-      author: 'him',
-      title: '파스타 맛집',
-      content: '오늘 너랑 먹은 파스타 진짜 맛있었음 ㅎㅎ',
-      photos: [],
-      mood: 'happy',
-      weather: 'cloudy',
-      location: '연남동',
-      tags: ['데이트', '맛집'],
-      createdAt: '2026-04-22',
-    },
-  ])
-
-  // 사진 목록 (1단계는 base64로 localStorage)
-  const [photos, setPhotos] = useLocalStorage('diary_photos', [])
-
-  // 일정 (캘린더 직접 추가)
-  // 카테고리: date(데이트), trip(여행), anniversary(기념일), meeting(약속), other(기타)
-  const [events, setEvents] = useLocalStorage('diary_events', [
-    { id: 1, date: '2026-05-02', endDate: '2026-05-02', title: '전시회 데이트', time: '14:00', location: '국립현대미술관', category: 'date' },
-  ])
-
-  // 직접 추가한 기념일
-  const [customAnniversaries, setCustomAnniversaries] = useLocalStorage('diary_anniversaries', [])
-
-  // 위시리스트
-  const [wishlist, setWishlist] = useLocalStorage('diary_wishlist', [
-    { id: 1, title: '같이 프로필 사진 찍기', author: 'her', completed: false, createdAt: '2026-04-20' },
-    { id: 2, title: '동해 바다 보러가기', author: 'him', completed: false, createdAt: '2026-04-18' },
-    { id: 3, title: '공유 주방에서 요리해주기', author: 'her', completed: true, createdAt: '2026-03-10', completedAt: '2026-04-15' },
-    { id: 4, title: '길거리 분식 먹기', author: 'him', completed: false, createdAt: '2026-04-12' },
-  ])
-
   // 로그인 상태
-  const [auth, setAuth] = useLocalStorage('diary_auth', { isLoggedIn: false, user: null })
+  const [auth, setAuthState] = useLocalStorage('diary_auth', { isLoggedIn: false, user: null })
 
-  // 사용자 계정 (변경된 ID/비번 저장)
-  // 기본값: null = 아직 변경 안 함 → 로그인 후 강제 변경
-  const [accounts, setAccounts] = useLocalStorage('diary_accounts', null)
+  // 데이터
+  const [settings, setSettingsState] = useState(DEFAULT_SETTINGS)
+  const [entries, setEntriesState] = useState([])
+  const [events, setEventsState] = useState([])
+  const [wishlist, setWishlistState] = useState([])
+  const [customAnniversaries, setCustomAnniversariesState] = useState([])
+  const [accounts, setAccountsState] = useState(null)
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  // 초기 데이터 로드
+  const loadAllData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [
+        settingsData,
+        entriesData,
+        eventsData,
+        wishlistData,
+        annivData,
+        accountsData,
+      ] = await Promise.all([
+        api.getSettings().catch(() => ({})),
+        api.getEntries().catch(() => []),
+        api.getEvents().catch(() => []),
+        api.getWishlist().catch(() => []),
+        api.getAnniversaries().catch(() => []),
+        api.getAccounts().catch(() => []),
+      ])
+
+      setSettingsState({ ...DEFAULT_SETTINGS, ...settingsData })
+      setEntriesState(Array.isArray(entriesData) ? entriesData : [])
+      setEventsState(Array.isArray(eventsData) ? eventsData : [])
+      setWishlistState(Array.isArray(wishlistData) ? wishlistData : [])
+      setCustomAnniversariesState(Array.isArray(annivData) ? annivData : [])
+      setAccountsState(
+        Array.isArray(accountsData) && accountsData.length > 0 ? accountsData : null
+      )
+    } catch (err) {
+      setError(err.message || '데이터 로드 실패')
+      console.error('데이터 로드 실패:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // 로그인 시 자동 로드
+  useEffect(() => {
+    if (auth.isLoggedIn) {
+      loadAllData()
+    }
+  }, [auth.isLoggedIn, loadAllData])
+
+  // ============================================
+  // Settings
+  // ============================================
+
+  const setSettings = useCallback(async (newSettings) => {
+    const updated = typeof newSettings === 'function'
+      ? newSettings(settings)
+      : newSettings
+    setSettingsState(updated)
+    try {
+      await api.saveSettings(updated)
+    } catch (err) {
+      console.error('설정 저장 실패:', err)
+    }
+  }, [settings])
+
+  // ============================================
+  // Entries (일기)
+  // ============================================
+
+  const addEntry = useCallback(async (entry) => {
+    try {
+      const result = await api.createEntry(entry)
+      const newEntry = {
+        ...entry,
+        id: result.id,
+        number: result.number,
+      }
+      setEntriesState(prev => [newEntry, ...prev])
+      return newEntry
+    } catch (err) {
+      console.error('일기 추가 실패:', err)
+      alert('일기 저장 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  const updateEntry = useCallback(async (id, entry) => {
+    try {
+      await api.updateEntry(id, entry)
+      setEntriesState(prev => prev.map(e => e.id === id ? { ...entry, id } : e))
+    } catch (err) {
+      console.error('일기 수정 실패:', err)
+      alert('일기 수정 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  const deleteEntry = useCallback(async (id) => {
+    try {
+      await api.deleteEntry(id)
+      setEntriesState(prev => prev.filter(e => e.id !== id))
+    } catch (err) {
+      console.error('일기 삭제 실패:', err)
+      alert('일기 삭제 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  // 호환성: setEntries (Optimistic Update만, 서버 동기화 X)
+  const setEntries = useCallback((newValue) => {
+    const updated = typeof newValue === 'function' ? newValue(entries) : newValue
+    setEntriesState(updated)
+    console.warn('⚠️ setEntries 직접 호출됨. 서버 동기화 X. addEntry/updateEntry/deleteEntry 사용 권장')
+  }, [entries])
+
+  // ============================================
+  // Events (일정)
+  // ============================================
+
+  const addEvent = useCallback(async (event) => {
+    try {
+      const result = await api.createEvent(event)
+      const newEvent = { ...event, id: result.id }
+      setEventsState(prev => [...prev, newEvent])
+      return newEvent
+    } catch (err) {
+      console.error('일정 추가 실패:', err)
+      alert('일정 저장 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  const updateEventApi = useCallback(async (id, event) => {
+    try {
+      await api.updateEvent(id, event)
+      setEventsState(prev => prev.map(e => e.id === id ? { ...event, id } : e))
+    } catch (err) {
+      console.error('일정 수정 실패:', err)
+      alert('일정 수정 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  const deleteEvent = useCallback(async (id) => {
+    try {
+      await api.deleteEvent(id)
+      setEventsState(prev => prev.filter(e => e.id !== id))
+    } catch (err) {
+      console.error('일정 삭제 실패:', err)
+      alert('일정 삭제 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  // 호환성: setEvents (서버 미동기화)
+  const setEvents = useCallback((newValue) => {
+    const updated = typeof newValue === 'function' ? newValue(events) : newValue
+    setEventsState(updated)
+    console.warn('⚠️ setEvents 직접 호출됨. 서버 동기화 X')
+  }, [events])
+
+  // ============================================
+  // Wishlist
+  // ============================================
+
+  const addWish = useCallback(async (wish) => {
+    try {
+      const result = await api.createWish(wish)
+      const newWish = { ...wish, id: result.id }
+      setWishlistState(prev => [newWish, ...prev])
+      return newWish
+    } catch (err) {
+      console.error('위시 추가 실패:', err)
+      alert('위시 저장 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  const updateWish = useCallback(async (id, wish) => {
+    try {
+      await api.updateWish(id, wish)
+      setWishlistState(prev => prev.map(w => w.id === id ? { ...wish, id } : w))
+    } catch (err) {
+      console.error('위시 수정 실패:', err)
+      alert('위시 수정 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  const deleteWish = useCallback(async (id) => {
+    try {
+      await api.deleteWish(id)
+      setWishlistState(prev => prev.filter(w => w.id !== id))
+    } catch (err) {
+      console.error('위시 삭제 실패:', err)
+      alert('위시 삭제 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  // 호환성: setWishlist
+  const setWishlist = useCallback((newValue) => {
+    const updated = typeof newValue === 'function' ? newValue(wishlist) : newValue
+    setWishlistState(updated)
+    console.warn('⚠️ setWishlist 직접 호출됨. 서버 동기화 X')
+  }, [wishlist])
+
+  // ============================================
+  // Anniversaries
+  // ============================================
+
+  const addAnniversary = useCallback(async (anniv) => {
+    try {
+      const result = await api.createAnniversary(anniv)
+      const newA = { ...anniv, id: result.id }
+      setCustomAnniversariesState(prev => [...prev, newA])
+      return newA
+    } catch (err) {
+      console.error('기념일 추가 실패:', err)
+      alert('기념일 저장 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  const deleteAnniversary = useCallback(async (id) => {
+    try {
+      await api.deleteAnniversary(id)
+      setCustomAnniversariesState(prev => prev.filter(a => a.id !== id))
+    } catch (err) {
+      console.error('기념일 삭제 실패:', err)
+      alert('기념일 삭제 실패: ' + err.message)
+      throw err
+    }
+  }, [])
+
+  // 호환성: setCustomAnniversaries
+  const setCustomAnniversaries = useCallback((newValue) => {
+    const updated = typeof newValue === 'function'
+      ? newValue(customAnniversaries)
+      : newValue
+    setCustomAnniversariesState(updated)
+    console.warn('⚠️ setCustomAnniversaries 직접 호출됨. 서버 동기화 X')
+  }, [customAnniversaries])
+
+  // ============================================
+  // Accounts
+  // ============================================
+
+  const setAccounts = useCallback(async (newAccounts) => {
+    const updated = typeof newAccounts === 'function'
+      ? newAccounts(accounts)
+      : newAccounts
+    setAccountsState(updated)
+
+    try {
+      if (updated && Array.isArray(updated) && updated.length > 0) {
+        await api.saveAccounts(updated)
+      }
+    } catch (err) {
+      console.error('계정 저장 실패:', err)
+      alert('계정 저장 실패: ' + err.message)
+    }
+  }, [accounts])
+
+  // ============================================
+  // Auth
+  // ============================================
+
+  const setAuth = useCallback((newAuth) => {
+    setAuthState(typeof newAuth === 'function' ? newAuth(auth) : newAuth)
+  }, [auth, setAuthState])
+
+  // 사진 호환성 (안 씀)
+  const photos = []
+  const setPhotos = () => {}
 
   return {
+    // 데이터
     settings, setSettings,
     entries, setEntries,
     photos, setPhotos,
@@ -110,5 +349,23 @@ export function useAppData() {
     wishlist, setWishlist,
     auth, setAuth,
     accounts, setAccounts,
+
+    // CRUD 메서드 (서버 동기화) - 권장
+    addEntry,
+    updateEntry,
+    deleteEntry,
+    addEvent,
+    updateEvent: updateEventApi,
+    deleteEvent,
+    addWish,
+    updateWish,
+    deleteWish,
+    addAnniversary,
+    deleteAnniversary,
+
+    // 상태
+    loading,
+    error,
+    reload: loadAllData,
   }
 }
