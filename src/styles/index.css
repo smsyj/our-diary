@@ -1,0 +1,679 @@
+/* 디자인 베이스 import */
+@import './diary.css';
+
+/* ==========================================
+   반응형 + 실제 앱 모드용 스타일
+   ========================================== */
+
+body.app-mode {
+  padding: 0;
+  background: var(--bg-page);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body.app-mode::before,
+body.app-mode::after {
+  display: none;
+}
+
+/* ==========================================
+   모바일 (~1023px): 폰 프레임 풀스크린
+   ========================================== */
+.app-mode .phone {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  margin: 0 auto;
+  border-radius: 0;
+  box-shadow: 0 0 60px rgba(0,0,0,0.5);
+  padding: 0;
+}
+
+.app-mode .phone::before {
+  display: none;
+}
+
+.app-mode .paper {
+  border-radius: 0;
+  min-height: 100vh;
+  padding: 24px 20px;
+}
+
+.app-layout-desktop { display: none; }
+.app-layout-mobile { display: block; }
+
+/* ==========================================
+   PC (1024px+): 사이드바 + 와이드 메인
+   ========================================== */
+@media (min-width: 1024px) {
+  body.app-mode {
+    padding: 0;
+    background:
+      radial-gradient(ellipse at 20% 0%, #3a2a1d 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, #3a2a1d 0%, transparent 60%),
+      var(--bg-page);
+    overflow: auto;
+  }
+
+  body.app-mode::before,
+  body.app-mode::after {
+    display: block;
+  }
+
+  .app-layout-desktop { display: flex; }
+  .app-layout-mobile { display: none; }
+
+  .desktop-layout {
+    display: flex;
+    min-height: 100vh;
+    max-width: 1600px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ============== 사이드바 ============== */
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--paper-bg);
+    background-image:
+      radial-gradient(ellipse 600px 200px at 20% 0%, rgba(255,240,210,0.5), transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0 2px, rgba(140,100,60,0.012) 2px 3px),
+      var(--paper-bg);
+    padding: 32px 24px;
+    border-right: 0.5px solid var(--paper-edge);
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+    min-height: 100vh;
+  }
+
+  .sidebar-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 0.5px dashed var(--line-dashed);
+    position: relative;
+  }
+
+  .sidebar-tape {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-3deg);
+    width: 60px;
+    height: 14px;
+    background: var(--tape);
+    border-radius: 1px;
+  }
+
+  .sidebar-est {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+    text-transform: uppercase;
+  }
+
+  .sidebar-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 36px;
+    font-weight: 400;
+    margin: 0;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+
+  .sidebar-couple {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .sidebar-couple p {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .sidebar-counter {
+    text-align: center;
+    padding: 16px 0;
+    border-bottom: 0.5px dashed var(--line-dashed);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-counter-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--text-muted);
+    margin: 0 0 4px;
+  }
+
+  .sidebar-counter-num {
+    font-family: var(--font-serif);
+    font-size: 30px;
+    font-weight: 400;
+    margin: 0;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+
+  .sidebar-counter-since {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin: 4px 0 0;
+  }
+
+  .sidebar-nav {
+    margin-bottom: 20px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    font-family: var(--font-serif);
+    font-size: 14px;
+  }
+
+  .sidebar-item:hover {
+    background: rgba(184, 153, 104, 0.15);
+    color: var(--text-primary);
+  }
+
+  .sidebar-item.active {
+    background: var(--text-primary);
+    color: var(--paper-bg);
+  }
+
+  .sidebar-item.active span {
+    font-weight: 500;
+  }
+
+  .sidebar-section-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    text-transform: uppercase;
+  }
+
+  .sidebar-upcoming {
+    padding-top: 16px;
+    border-top: 0.5px dashed var(--line-dashed);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-upcoming-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    background: var(--paper-cream);
+    border: 0.5px solid var(--line-solid);
+  }
+
+  .sidebar-upcoming-item.highlight {
+    background: var(--paper-warm);
+    border-color: var(--color-accent-border);
+  }
+
+  .sidebar-upcoming-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sidebar-upcoming-title {
+    font-family: var(--font-serif);
+    font-size: 12px;
+    margin: 0;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-upcoming-date {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    margin: 2px 0 0;
+  }
+
+  .sidebar-upcoming-dday {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--color-her);
+    margin: 0 0 0 8px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 0.5px dashed var(--line-dashed);
+    text-align: center;
+  }
+
+  .sidebar-logout {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-her);
+    cursor: pointer;
+    margin: 0 0 12px;
+    letter-spacing: 1px;
+  }
+
+  .sidebar-version {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--text-faint);
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  /* ============== 메인 콘텐츠 ============== */
+  .desktop-main {
+    flex: 1;
+    padding: 40px 48px;
+    min-width: 0;
+  }
+
+  .desktop-main-header {
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .desktop-main-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 32px;
+    font-weight: 400;
+    margin: 0;
+    color: #F0D8B0;
+  }
+
+  .desktop-main-subtitle {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #B49170;
+    text-transform: uppercase;
+  }
+
+  .desktop-grid {
+    display: grid;
+    gap: 24px;
+  }
+
+  .desktop-grid-2col {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .desktop-grid-3col {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .desktop-card {
+    background: var(--paper-bg);
+    background-image:
+      radial-gradient(ellipse 600px 200px at 20% 0%, rgba(255,240,210,0.5), transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0 2px, rgba(140,100,60,0.012) 2px 3px),
+      var(--paper-bg);
+    border-radius: 8px;
+    padding: 28px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    position: relative;
+  }
+
+  .desktop-card-tape {
+    position: absolute;
+    top: -8px;
+    left: 30px;
+    width: 50px;
+    height: 16px;
+    background: var(--tape);
+    border-radius: 1px;
+    transform: rotate(-3deg);
+  }
+
+  .desktop-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1fr;
+    gap: 24px;
+  }
+
+  .desktop-write {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .desktop-calendar {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+  }
+
+  /* PC에서 phone 컨테이너를 와이드 카드처럼 변환 */
+  .desktop-layout .phone {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    max-width: 100%;
+    border-radius: 0;
+  }
+  .desktop-layout .phone::before {
+    display: none;
+  }
+  .desktop-layout .paper {
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    padding: 32px;
+    min-height: auto;
+  }
+  /* PC에서 캘린더 셀 더 크게 */
+  .desktop-layout .cal-cell {
+    font-size: 14px;
+    min-height: 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* PC에서 갤러리 그리드 더 많이 */
+  .desktop-layout .gallery-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  /* PC에서 폴라로이드 더 크게 */
+  .desktop-layout .polaroid {
+    max-width: 280px;
+  }
+  /* PC에서 하단 네비 숨김 (사이드바가 대체) */
+  .desktop-layout .nav-bottom {
+    display: none;
+  }
+  /* PC에서 상단 헤더 좌측 ← 버튼 숨김 */
+  .desktop-layout .paper > div:first-of-type:not(.tape-top) > p:first-child[style*="cursor"] {
+    visibility: hidden;
+  }
+
+  .desktop-entry-card {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .desktop-entry-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+  }
+}
+
+@media (max-width: 1023px) {
+  button, .nav-item, .cal-cell, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  .paper {
+    font-size: 14px;
+  }
+}
+
+button, [role="button"], .nav-item, .cal-cell, .sidebar-item {
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+button:active, [role="button"]:active, .nav-item:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+}
+
+.page-enter {
+  animation: fadeSlideIn 0.3s ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toggle.active { background: var(--color-her); }
+.toggle.active::after { right: 2px; left: auto; }
+.toggle.inactive { background: var(--line-solid); }
+.toggle.inactive::after { left: 2px; right: auto; }
+
+.file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--color-her);
+  margin: 0 2px;
+  animation: pulse 1.4s infinite ease-in-out both;
+}
+.loading-dot:nth-child(1) { animation-delay: -0.32s; }
+.loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes pulse {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+/* ==========================================
+   캘린더 V2 - 일정 바 + 폴라로이드
+   ========================================== */
+.cal-grid-events {
+  gap: 1px;
+}
+
+.cal-cell-v2 {
+  min-height: 90px;
+  position: relative;
+  padding: 4px 2px 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-serif);
+  transition: background 0.15s;
+  overflow: visible;
+}
+
+.cal-cell-v2:hover {
+  background: rgba(184, 153, 104, 0.12);
+}
+
+.cal-cell-v2.faded { opacity: 0.3; pointer-events: none; }
+.cal-cell-v2.faded .cal-date-num { color: var(--text-faint); }
+
+.cal-cell-v2.sun .cal-date-num { color: var(--color-her); }
+.cal-cell-v2.sat .cal-date-num { color: var(--color-him); }
+
+.cal-cell-v2.today .cal-date-num .today-num {
+  background: var(--text-primary);
+  color: var(--paper-bg);
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 500;
+  font-style: italic;
+  font-size: 11px;
+}
+
+.cal-date-num {
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 2px;
+  z-index: 2;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* 폴라로이드 사진 - 작은 썸네일로, 일정 위에 살짝 겹치되 모서리만 */
+.cal-photo {
+  background: white;
+  padding: 2px 2px 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  width: 60%;
+  aspect-ratio: 1;
+  margin: 1px auto;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s, z-index 0s;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.cal-cell-v2:hover .cal-photo {
+  transform: rotate(0deg) scale(2) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 20;
+}
+
+.cal-photo-count {
+  position: absolute;
+  top: 1px; right: 1px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 7px;
+  font-family: var(--font-mono);
+  padding: 1px 3px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+/* 일정 바 영역 - 항상 셀 하단에 고정, 사진 아래 별도 영역 */
+.cal-events {
+  margin-top: auto;
+  padding-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: calc(100% + 2px);
+  margin-left: -1px;
+  margin-right: -1px;
+  z-index: 3;
+  position: relative;
+}
+
+.cal-event-bar {
+  height: 14px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.cal-event-bar:hover { opacity: 0.85; }
+
+/* 일정 바 모서리 처리 */
+.cal-event-bar.pos-single {
+  border-radius: 3px;
+  margin: 0 1px;
+}
+.cal-event-bar.pos-start {
+  border-radius: 3px 0 0 3px;
+  margin-left: 1px;
+}
+.cal-event-bar.pos-end {
+  border-radius: 0 3px 3px 0;
+  margin-right: 1px;
+}
+.cal-event-bar.pos-middle {
+  border-radius: 0;
+}
+
+.cal-event-more {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1;
+}
+
+/* 모바일 - 셀 충분히 넓게 (안 짤리게) */
+@media (max-width: 1023px) {
+  .cal-cell-v2 {
+    min-height: 82px;
+    padding: 4px 2px 2px;
+  }
+  .cal-date-num { font-size: 11px; }
+  .cal-event-bar { height: 12px; font-size: 7px; padding: 0 3px; }
+  .cal-photo {
+    width: 55%;
+    padding: 1px 1px 3px;
+  }
+  /* 모바일에서 호버는 클릭으로 - 활성 상태 시 폴라로이드 크게 */
+  .cal-cell-v2:active .cal-photo {
+    transform: rotate(0deg) scale(2.2) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 20;
+  }
+}
+
+/* PC - 셀 크게 */
+@media (min-width: 1024px) {
+  .cal-cell-v2 {
+    min-height: 110px;
+    padding: 6px 3px 3px;
+  }
+  .cal-date-num { font-size: 13px; }
+  .cal-event-bar { height: 16px; font-size: 9px; padding: 0 5px; }
+  .cal-photo { width: 60%; }
+}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#d46a8a" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Courier+Prime:wght@400;700&family=Noto+Serif+KR:wght@400;500;700&family=Caveat:wght@400;500;600&family=Gaegu:wght@400;700&family=Bungee&display=swap" rel="stylesheet" />
+    <title>Our Diary</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // PWA: 서비스워커 등록 + 설치 프롬프트 캡처
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {})
+        })
+      }
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault()
+        window.__deferredInstallPrompt = e
+        window.dispatchEvent(new Event('pwa-installable'))
+      })
+      window.addEventListener('appinstalled', () => {
+        window.__deferredInstallPrompt = null
+      })
+    </script>
+  </body>
+</html>

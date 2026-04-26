@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#f5ede0"/>
+  <rect x="80" y="120" width="352" height="312" rx="24" fill="#fff" stroke="#2a1f17" stroke-width="8"/>
+  <rect x="80" y="120" width="352" height="72" rx="24" fill="#d46a8a"/>
+  <circle cx="160" cy="100" r="20" fill="#2a1f17"/>
+  <circle cx="352" cy="100" r="20" fill="#2a1f17"/>
+  <text x="256" y="320" font-family="Georgia,serif" font-size="140" font-style="italic" text-anchor="middle" fill="#d46a8a">♡</text>
+  <text x="256" y="400" font-family="Courier,monospace" font-size="36" letter-spacing="6" text-anchor="middle" fill="#2a1f17">DIARY</text>
+</svg>
