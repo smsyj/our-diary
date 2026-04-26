@@ -9,12 +9,44 @@
 // API 베이스 URL (Cloudflare Workers 주소)
 export const API_BASE = 'https://our-diary-api.smsyj.workers.dev'
 
+// API 토큰 관리
+// 로그인 성공 시 서버가 토큰을 발급하면 localStorage에 저장
+// 모든 요청에 X-Api-Token 헤더로 자동 전송
+const TOKEN_KEY = 'diary_api_token'
+
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function setToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token)
+    } else {
+      localStorage.removeItem(TOKEN_KEY)
+    }
+  } catch (err) {
+    console.error('토큰 저장 실패:', err)
+  }
+}
+
 // 공통 fetch 래퍼
 async function request(path, options = {}) {
   const url = API_BASE + path
+  const token = getToken()
+
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
+  }
+
+  // 토큰이 있으면 헤더에 포함
+  if (token) {
+    headers['X-Api-Token'] = token
   }
 
   try {
@@ -30,6 +62,17 @@ async function request(path, options = {}) {
     }
 
     if (!res.ok) {
+      // 401이면 토큰 만료 - 로그아웃 처리 (로그인 화면으로)
+      if (res.status === 401 && path !== '/api/login') {
+        setToken(null)
+        // localStorage의 auth도 초기화
+        try { localStorage.removeItem('diary_auth') } catch {}
+        // 페이지 새로고침으로 로그인 화면 가게
+        if (typeof window !== 'undefined') {
+          alert('인증이 만료되었어요. 다시 로그인해주세요.')
+          window.location.reload()
+        }
+      }
       throw new Error(data.error || `HTTP ${res.status}`)
     }
     return data
@@ -74,7 +117,17 @@ export const api = {
 
   // ============ 인증 ============
   async login(id, password) {
-    return await post('/api/login', { id, password })
+    const result = await post('/api/login', { id, password })
+    // 로그인 성공 시 토큰 저장
+    if (result && result.success && result.token) {
+      setToken(result.token)
+    }
+    return result
+  },
+
+  // 로그아웃 - 토큰 제거
+  logout() {
+    setToken(null)
   },
 
   async getAccounts() {

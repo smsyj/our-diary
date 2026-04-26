@@ -88,6 +88,7 @@ export default function App() {
   }
 
   function handleLogout() {
+    api.logout() // 토큰 삭제
     data.setAuth({ isLoggedIn: false, user: null })
     setPage('login')
   }
