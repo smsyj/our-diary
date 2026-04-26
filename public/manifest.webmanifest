@@ -2,15 +2,15 @@
   "name": "Our Diary Calendar",
   "short_name": "Diary Cal",
   "description": "우리 둘만의 캘린더 위젯",
-  "start_url": "/?widget=calendar",
-  "scope": "/",
+  "start_url": "/our-diary/?widget=calendar",
+  "scope": "/our-diary/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f5ede0",
   "theme_color": "#d46a8a",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/our-diary/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
@@ -19,7 +19,7 @@
   "shortcuts": [
     {
       "name": "캘린더만 보기",
-      "url": "/?widget=calendar"
+      "url": "/our-diary/?widget=calendar"
     }
   ]
 }
