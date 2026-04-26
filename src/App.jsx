@@ -184,12 +184,14 @@ export default function App() {
     )
   }
 
-  // 첫 로그인 감지 - 사용자 계정이 없는데 로그인된 상태
+  // 첫 로그인 감지 - 본인(현재 로그인한 role)의 계정이 DB에 아직 없으면 모달 띄움
   // 어드민은 모달 안 뜸
+  const myRole = data.auth.user?.role
+  const myAccountExists = data.accounts?.some(a => a.role === myRole)
   const needsAccountSetup = data.auth.isLoggedIn &&
     data.auth.isFirstLogin &&
     !data.auth.isAdmin &&
-    (!data.accounts || data.accounts.length === 0)
+    !myAccountExists
 
   const pageContent = (
     <div className="page-enter" key={page}>

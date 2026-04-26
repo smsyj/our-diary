@@ -311,9 +311,14 @@ export default function SettingsPage({ data, navigate, onLogout, isDesktop }) {
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', cursor: 'pointer' }} onClick={() => setShowAccountModal(true)}>
                 <div>
-                  <p className="serif" style={{ fontSize: '13px', margin: 0 }}>🔐 ID / 비밀번호 변경</p>
+                  <p className="serif" style={{ fontSize: '13px', margin: 0 }}>🔐 내 ID / 비밀번호 변경</p>
                   <p className="meta" style={{ color: 'var(--text-muted)', margin: '2px 0 0', fontSize: '10px' }}>
-                    {accounts && accounts.length > 0 ? '본인의 ID와 비밀번호를 변경해요' : '아직 초기 계정 설정이 안 됐어요'}
+                    {(() => {
+                      const myAccount = accounts?.find(a => a.role === auth.user?.role)
+                      return myAccount
+                        ? `현재 ID: ${myAccount.id}`
+                        : '아직 초기 계정 설정이 안 됐어요'
+                    })()}
                   </p>
                 </div>
                 <p className="meta" style={{ color: 'var(--text-muted)', fontSize: '11px' }}>→</p>
