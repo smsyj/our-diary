@@ -27,13 +27,13 @@ export default function LoginPage({ onLogin }) {
   const coverPhoto = getCoverPhoto()
   const isInitialSetup = !hasCustomAccounts() // 처음 사용 (계정 안 만들었음)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     if (!id || !password) {
       setError('아이디와 비밀번호를 입력해주세요.')
       return
     }
-    const result = onLogin(id, password)
+    const result = await onLogin(id, password)
     if (!result.success) {
       setError(result.message)
     }
